@@ -1,7 +1,11 @@
 class GestaltEngine:
-    """Core Gestalt Engine for Himeko Cognitive OS."""
+    """Core Gestalt Engine for Himeko Cognitive OS"""
     def __init__(self):
         self.state = "initialized"
+        self.history = []
 
     def process(self, input_data):
-        return input_data
+        if not input_data:
+            return "Error: Empty message"
+        self.history.append(input_data)
+        return f"Processed: {input_data} (Total history: {len(self.history)})"
