@@ -1,0 +1,7 @@
+class GestaltEngine:
+    """Core Gestalt Engine for Himeko Cognitive OS."""
+    def __init__(self):
+        self.state = "initialized"
+
+    def process(self, input_data):
+        return input_data
