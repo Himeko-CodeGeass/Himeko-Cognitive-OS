@@ -1,17 +1,16 @@
-import unittest
 import sys
 import os
 
+# 強制將專案根目錄加入 Python 搜尋路徑
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+import unittest
 from core.gestalt_engine import GestaltEngine
 
 class TestGestaltEngine(unittest.TestCase):
-    def setUp(self):
-        self.engine = GestaltEngine(version="v2.0")
+    def test_initialization(self):
+        engine = GestaltEngine()
+        self.assertEqual(engine.state, "initialized")
 
-    def test_engine_initialization(self):
-        self.assertEqual(self.engine.version, "v2.0")
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     unittest.main()
