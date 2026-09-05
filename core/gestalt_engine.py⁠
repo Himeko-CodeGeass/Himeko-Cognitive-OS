@@ -1,11 +1,42 @@
-class GestaltEngine:
-    """Core Gestalt Engine for Himeko Cognitive OS"""
-    def __init__(self):
-        self.state = "initialized"
-        self.history = []
+from core.constitution import DynamicConstitution
+from core.semantic_buffer import SemanticBuffer
 
-    def process(self, input_data):
-        if not input_data:
-            return "Error: Empty message"
-        self.history.append(input_data)
-        return f"Processed: {input_data} (Total history: {len(self.history)})"
+class GestaltEngine:
+    """Advanced Gestalt Engine for multi-modal intent alignment and context fusion."""
+    def __init__(self, capacity: int = 5):
+        self.buffer = SemanticBuffer(capacity=capacity)
+        self.constitution = DynamicConstitution()
+
+    def process_intent(self, user_input: str, context_meta: dict) -> dict:
+        # 1. 推進語意緩衝區，捕捉上下文
+        self.buffer.push(user_input)
+        current_context = self.buffer.get_context()
+
+        # 2. 執行動態憲章約束校驗
+        validation_result = self.constitution.evaluate(context_meta)
+        if not validation_result["is_valid"]:
+            return {
+                "status": "rejected",
+                "violations": validation_result["violations"],
+                "gestalt_intent": None
+            }
+
+        # 3. 格式塔意圖合成與對齊矩陣計算
+        alignment_score = self._calculate_alignment(user_input, current_context)
+        synthesized_intent = {
+            "primary_focus": user_input,
+            "historical_context": current_context,
+            "alignment_score": alignment_score
+        }
+
+        return {
+            "status": "approved",
+            "violations": [],
+            "gestalt_intent": synthesized_intent
+        }
+
+    def _calculate_alignment(self, user_input: str, context: list) -> float:
+        # 模擬多模態意圖對齊評分機制
+        if not context:
+            return 1.0
+        return min(1.0, 0.8 + (len(user_input) * 0.01))
