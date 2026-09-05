@@ -1,42 +1,43 @@
 from core.constitution import DynamicConstitution
 from core.semantic_buffer import SemanticBuffer
+from core.memory.manager import MemoryManager
 
 class GestaltEngine:
-    """Advanced Gestalt Engine for multi-modal intent alignment and context fusion."""
+    """用於多模態意圖對齊和上下文融合的高級格式塔引擎"""
     def __init__(self, capacity: int = 5):
         self.buffer = SemanticBuffer(capacity=capacity)
         self.constitution = DynamicConstitution()
+        # 初始化長期記憶管理器
+        self.memory_manager = MemoryManager()
 
-    def process_intent(self, user_input: str, context_meta: dict) -> dict:
-        # 1. 推進語意緩衝區，捕捉上下文
+    def process_intent(self, user_input: str) -> dict:
+        # 1. 檢索相關的長期記憶作為背景脈絡
+        historical_context = self.memory_manager.retrieve_relevant_context(limit=3)
+
+        # 2. 推進語意緩衝，捕捉上下文
         self.buffer.push(user_input)
         current_context = self.buffer.get_context()
 
-        # 2. 執行動態憲章約束校驗
-        validation_result = self.constitution.evaluate(context_meta)
+        # 3. 執行動態憲法合約校驗
+        validation_result = self.constitution.validate(current_context)
         if not validation_result["is_valid"]:
-            return {
-                "status": "rejected",
-                "violations": validation_result["violations"],
-                "gestalt_intent": None
+            response = {
+                "狀態": "已拒絕",
+                "原因": validation_result["reason"],
+                "歷史脈絡": historical_context
+            }
+        else:
+            response = {
+                "狀態": "已核准",
+                "上下文": current_context,
+                "歷史脈絡": historical_context,
+                "輸出": f"已成功處理主公意圖：{user_input}"
             }
 
-        # 3. 格式塔意圖合成與對齊矩陣計算
-        alignment_score = self._calculate_alignment(user_input, current_context)
-        synthesized_intent = {
-            "primary_focus": user_input,
-            "historical_context": current_context,
-            "alignment_score": alignment_score
-        }
+        # 4. 將當前互動寫入長期記憶庫
+        self.memory_manager.ingest_context(
+            user_intent=user_input, 
+            response_text=str(response)
+        )
 
-        return {
-            "status": "approved",
-            "violations": [],
-            "gestalt_intent": synthesized_intent
-        }
-
-    def _calculate_alignment(self, user_input: str, context: list) -> float:
-        # 模擬多模態意圖對齊評分機制
-        if not context:
-            return 1.0
-        return min(1.0, 0.8 + (len(user_input) * 0.01))
+        return response
