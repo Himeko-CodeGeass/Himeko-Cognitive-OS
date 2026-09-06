@@ -3,13 +3,18 @@ import sys
 import os
 import traceback
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-if BASE_DIR not in sys.path:
-    sys.path.insert(0, BASE_DIR)
+# 取得當前目錄與上層目錄
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+PARENT_DIR = os.path.dirname(CURRENT_DIR)
+
+# 將當前目錄與上層目錄優先加入 sys.path
+for path in [CURRENT_DIR, PARENT_DIR]:
+    if path not in sys.path:
+        sys.path.insert(0, path)
 
 try:
     from core.gestalt_engine import GestaltEngine
-    print("Successfully imported GestaltEngine!")
+    print("[Success] Core modules imported successfully!")
 except Exception as e:
     print("=== Detailed Import Error ===")
     traceback.print_exc()
