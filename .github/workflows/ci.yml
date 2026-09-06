@@ -23,6 +23,15 @@ jobs:
         python -m pip install --upgrade pip
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
+    - name: Debug Directory Structure
+      run: |
+        echo "=== Current Working Directory ==="
+        pwd
+        echo "=== Listing Current Directory ==="
+        ls -la
+        echo "=== Listing Parent Directory ==="
+        ls -la ..
+
     - name: Run Main Entry Verification
       run: |
-        PYTHONPATH=. python main.py
+        PYTHONPATH=.:.. python main.py
