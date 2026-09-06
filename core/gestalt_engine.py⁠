@@ -1,59 +1,22 @@
 # -*- coding: utf-8 -*-
 import os
-from core.memory_manager import MemoryManager
-from core.tools import AgentTools
+
+try:
+    from core.memory_manager import MemoryManager
+    from core.tools import AgentTools
+except ModuleNotFoundError:
+    from .memory_manager import MemoryManager
+    from .tools import AgentTools
 
 class GestaltEngine:
     def __init__(self, db_path: str = "himeko_memory.db"):
-        print(f"[GestaltEngine] Initializing with memory backend: {db_path}")
+        print("[GestaltEngine] Initializing...")
         self.memory = MemoryManager(db_path=db_path)
+        self.tools = AgentTools()
 
-    def process_intent(self, intent: str, adapter=None) -> dict:
+    def process_intent(self, intent: str):
         print(f"[GestaltEngine] Processing intent: {intent}")
-        
-        # 1. 檢索歷史上下文
-        history = self.memory.get_recent_memories(limit=5)
-        context_str = "\n".join([f"- [{m[1]}] {m[2]}" for m in history])
-        
-        # 2. 檢查是否觸發工具調用指令 (例如: TOOL:read_file:filepath)
+        history = self.memory.get_recent_history(limit=5)
+        context_str = "\n".join([f"- [{m['role']}]: {m['content']}" for m in history])
         tool_result = None
-        if intent.startswith("TOOL:"):
-            parts = intent.split(":", 2)
-            tool_name = parts[1] if len(parts) > 1 else ""
-            tool_arg = parts[2] if len(parts) > 2 else ""
-            
-            if tool_name == "read_file":
-                tool_result = AgentTools.read_file(tool_arg)
-            elif tool_name == "write_file":
-                sub_parts = tool_arg.split("|", 1)
-                if len(sub_parts) == 2:
-                    tool_result = AgentTools.write_file(sub_parts[0], sub_parts[1])
-                else:
-                    tool_result = "[Tool Error] Invalid write_file format. Use TOOL:write_file:path|content"
-            elif tool_name == "run_command":
-                tool_result = AgentTools.run_command(tool_arg)
-            else:
-                tool_result = f"[Tool Error] Unknown tool: {tool_name}"
-            
-            print(f"[GestaltEngine] Tool executed: {tool_result}")
-
-        # 3. 透過 Adapter 產生回應
-        full_prompt = f"Recent History:\n{context_str}\n\nCurrent Intent: {intent}"
-        if tool_result:
-            full_prompt += f"\n\nTool Execution Result:\n{tool_result}"
-
-        if adapter:
-            response = adapter.generate(prompt=full_prompt)
-        else:
-            response = f"[GestaltEngine Default] Acknowledged: {intent}"
-
-        # 4. 寫入長期記憶
-        self.memory.add_memory(role="user", content=intent)
-        self.memory.add_memory(role="assistant", content=response)
-
-        return {
-            "intent": intent,
-            "response": response,
-            "tool_result": tool_result,
-            "historical_context_count": len(history)
-        }
+        return {"status": "success", "context": context_str, "tool_result": tool_result}
