@@ -1,43 +1,59 @@
-from core.constitution import DynamicConstitution
-from core.semantic_buffer import SemanticBuffer
-from core.memory.manager import MemoryManager
+# -*- coding: utf-8 -*-
+import os
+from core.memory_manager import MemoryManager
+from core.tools import AgentTools
 
 class GestaltEngine:
-    """用於多模態意圖對齊和上下文融合的高級格式塔引擎"""
-    def __init__(self, capacity: int = 5):
-        self.buffer = SemanticBuffer(capacity=capacity)
-        self.constitution = DynamicConstitution()
-        # 初始化長期記憶管理器
-        self.memory_manager = MemoryManager()
+    def __init__(self, db_path: str = "himeko_memory.db"):
+        print(f"[GestaltEngine] Initializing with memory backend: {db_path}")
+        self.memory = MemoryManager(db_path=db_path)
 
-    def process_intent(self, user_input: str) -> dict:
-        # 1. 檢索相關的長期記憶作為背景脈絡
-        historical_context = self.memory_manager.retrieve_relevant_context(limit=3)
+    def process_intent(self, intent: str, adapter=None) -> dict:
+        print(f"[GestaltEngine] Processing intent: {intent}")
+        
+        # 1. 檢索歷史上下文
+        history = self.memory.get_recent_memories(limit=5)
+        context_str = "\n".join([f"- [{m[1]}] {m[2]}" for m in history])
+        
+        # 2. 檢查是否觸發工具調用指令 (例如: TOOL:read_file:filepath)
+        tool_result = None
+        if intent.startswith("TOOL:"):
+            parts = intent.split(":", 2)
+            tool_name = parts[1] if len(parts) > 1 else ""
+            tool_arg = parts[2] if len(parts) > 2 else ""
+            
+            if tool_name == "read_file":
+                tool_result = AgentTools.read_file(tool_arg)
+            elif tool_name == "write_file":
+                sub_parts = tool_arg.split("|", 1)
+                if len(sub_parts) == 2:
+                    tool_result = AgentTools.write_file(sub_parts[0], sub_parts[1])
+                else:
+                    tool_result = "[Tool Error] Invalid write_file format. Use TOOL:write_file:path|content"
+            elif tool_name == "run_command":
+                tool_result = AgentTools.run_command(tool_arg)
+            else:
+                tool_result = f"[Tool Error] Unknown tool: {tool_name}"
+            
+            print(f"[GestaltEngine] Tool executed: {tool_result}")
 
-        # 2. 推進語意緩衝，捕捉上下文
-        self.buffer.push(user_input)
-        current_context = self.buffer.get_context()
+        # 3. 透過 Adapter 產生回應
+        full_prompt = f"Recent History:\n{context_str}\n\nCurrent Intent: {intent}"
+        if tool_result:
+            full_prompt += f"\n\nTool Execution Result:\n{tool_result}"
 
-        # 3. 執行動態憲法合約校驗
-        validation_result = self.constitution.validate(current_context)
-        if not validation_result["is_valid"]:
-            response = {
-                "狀態": "已拒絕",
-                "原因": validation_result["reason"],
-                "歷史脈絡": historical_context
-            }
+        if adapter:
+            response = adapter.generate(prompt=full_prompt)
         else:
-            response = {
-                "狀態": "已核准",
-                "上下文": current_context,
-                "歷史脈絡": historical_context,
-                "輸出": f"已成功處理主公意圖：{user_input}"
-            }
+            response = f"[GestaltEngine Default] Acknowledged: {intent}"
 
-        # 4. 將當前互動寫入長期記憶庫
-        self.memory_manager.ingest_context(
-            user_intent=user_input, 
-            response_text=str(response)
-        )
+        # 4. 寫入長期記憶
+        self.memory.add_memory(role="user", content=intent)
+        self.memory.add_memory(role="assistant", content=response)
 
-        return response
+        return {
+            "intent": intent,
+            "response": response,
+            "tool_result": tool_result,
+            "historical_context_count": len(history)
+        }
