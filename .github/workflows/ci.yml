@@ -25,6 +25,6 @@ jobs:
 
     - name: Run Main Entry Verification
       env:
-        PYTHONPATH: ${{ github.workspace }}
+        PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/..
       run: |
         python main.py
