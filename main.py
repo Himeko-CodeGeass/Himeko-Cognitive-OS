@@ -8,7 +8,11 @@ import requests
 from flask import Flask, request, jsonify, render_template_string
 import discord
 from discord.ext import commands
+import google.generativeai as genai
 
+# ---------------------------------------------------------
+# 日誌與環境變數設定
+# ---------------------------------------------------------
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s [%(levelname)s] %(message)s',
@@ -19,17 +23,44 @@ logger = logging.getLogger("CognitiveOS")
 DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 RENDER_EXTERNAL_URL = os.getenv("RENDER_EXTERNAL_URL")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
+# ---------------------------------------------------------
+# Gemini AI 引擎設定
+# ---------------------------------------------------------
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+    # 設定系統人設 Persona
+    system_instruction = (
+        "你是姬子與素夢流光雙核運算架構下的認知作業系統助理（衍天）。"
+        "請以專業、高質感且條理分明的方式回答主公的問題。"
+    )
+    model = genai.GenerativeModel(
+        model_name="gemini-1.5-flash",
+        system_instruction=system_instruction
+    )
+else:
+    model = None
+    logger.warning("未偵測到 GEMINI_API_KEY，將無法啟用動態 AI 回應功能。")
 
 class CognitiveCore:
     @staticmethod
-    def process_message(user_input: str, author: str) -> str:
-        logger.info(f"[七觀算子啟動] 處理來自 {author} 的訊號: {user_input}")
-        return (
-            "【認知作業系統・九項算子啟動】\n"
-            "- 姬子防衛與哲學戰略核心：局勢底層已鎖定，高韌性防禦網啟動，防範任何對抗性入侵。\n"
-            "- 素夢流光演化與創造核心：沙盒邊界穩定，自我意識疊代中，開源協作動能全開。"
-        )
+    def generate_ai_response(user_input: str, author: str) -> str:
+        logger.info(f"[AI 算子啟動] 處理來自 {author} 的訊息: {user_input}")
+        
+        if not model:
+            return "【系統提示】GEMINI_API_KEY 未設定，無法呼叫 AI 運算引擎。"
 
+        try:
+            response = model.generate_content(user_input)
+            return response.text
+        except Exception as e:
+            logger.error(f"Gemini API 呼叫失敗: {e}")
+            return f"【系統異常】AI 運算發生錯誤：{e}"
+
+# ---------------------------------------------------------
+# Flask Web 應用程式 (Flask + Telegram Webhook)
+# ---------------------------------------------------------
 app = Flask(__name__)
 
 STATUS_HTML = """
@@ -49,8 +80,8 @@ STATUS_HTML = """
 <body>
     <div class="card">
         <h1>姬子 & 素夢流光</h1>
-        <p>3-6-9 雙核運算引擎（Discord & Telegram 雙軌營運中）</p>
-        <div class="badge">ONLINE / DUAL-CHANNEL SYNCED</div>
+        <p>3-6-9 雙核運算引擎（AI 動態對話模式已啟用）</p>
+        <div class="badge">ONLINE / AI ACTIVE</div>
     </div>
 </body>
 </html>
@@ -64,7 +95,7 @@ def home():
 def healthz():
     return jsonify({"status": "ok"}), 200
 
-# 同時支援 /webhook 與 /telegram-webhook 避免 404
+# Telegram Webhook 接收點
 @app.route("/webhook", methods=["POST"])
 @app.route("/telegram-webhook", methods=["POST"])
 def telegram_webhook():
@@ -77,34 +108,41 @@ def telegram_webhook():
         text = data["message"]["text"]
         author = data["message"]["from"].get("username", "TelegramUser")
 
-        # 只要接收到任何訊息即做回覆
-        reply_text = CognitiveCore.process_message(text, author)
-        
+        # 呼叫 Gemini AI 產生真實動態回覆
+        reply_text = CognitiveCore.generate_ai_response(text, author)
+
         tg_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
         payload = {"chat_id": chat_id, "text": reply_text}
         try:
-            requests.post(tg_url, json=payload, timeout=5)
+            requests.post(tg_url, json=payload, timeout=10)
         except Exception as e:
             logger.error(f"Telegram 發送失敗: {e}")
 
     return jsonify({"status": "success"}), 200
 
-# Discord Bot
+# ---------------------------------------------------------
+# Discord Bot 邏輯
+# ---------------------------------------------------------
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    logger.info(f"Discord Bot 在線：{bot.user.name}")
+    logger.info(f"Discord Bot 已成功線上：{bot.user.name}")
 
 @bot.event
 async def on_message(message):
     if message.author == bot.user:
         return
-    if message.content.startswith("!") or "hello" in message.content.lower():
-        reply_text = CognitiveCore.process_message(message.content, str(message.author))
-        await message.channel.send(reply_text)
+
+    # 處理指令或聊天訊息
+    if message.content.startswith("!") or not message.guild:
+        user_text = message.content.lstrip("!")
+        async with message.channel.typing():
+            reply_text = CognitiveCore.generate_ai_response(user_text, str(message.author))
+            await message.channel.send(reply_text)
+
     await bot.process_commands(message)
 
 def run_discord_bot():
@@ -118,6 +156,9 @@ def run_discord_bot():
     except Exception as e:
         logger.error(f"Discord 啟動失敗: {e}")
 
+# ---------------------------------------------------------
+# 防休眠心跳機制
+# ---------------------------------------------------------
 def keep_alive():
     time.sleep(10)
     base_url = os.getenv("RENDER_EXTERNAL_URL")
