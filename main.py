@@ -1,28 +1,71 @@
-# -*- coding: utf-8 -*-
 import os
-import sys
+import logging
 from flask import Flask, request
-from core.gestalt_engine import GestaltEngine
+from telegram import Update
+from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
+from google import genai
 
-# 確保專案根目錄納入 Python 搜尋路徑
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-if BASE_DIR not in sys.path:
-    sys.path.insert(0, BASE_DIR)
+# 設定日誌記錄
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-engine = GestaltEngine()
 
-@app.route("/", methods=["GET"])
+# 取得環境變數
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+
+# 初始化 Gemini 客戶端 (使用最新支援的模型)
+genai_client = genai.Client(api_key=GEMINI_API_KEY)
+GEMINI_MODEL = "gemini-3.6-flash"
+
+# 初始化 Telegram Bot 應用程式
+telegram_app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).updater(None).build()
+
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_message = update.message.text
+    chat_id = update.message.chat_id
+    logger.info(f"收到來自 {chat_id} 的訊息: {user_message}")
+
+    try:
+        # 呼叫 Gemini 產生回覆
+        response = genai_client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=user_message,
+        )
+        reply_text = response.text
+    except Exception as e:
+        logger.error(f"Gemini 錯誤: {e}")
+        reply_text = f"Gemini 錯誤: {e}"
+
+    # 回覆訊息給 Telegram 使用者
+    await context.bot.send_message(chat_id=chat_id, text=reply_text)
+
+# 註冊訊息處理器
+telegram_app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
+
+@app.route("/")
 def index():
     return "Himeko Cognitive OS is running.", 200
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    data = request.get_json()
-    if data:
-        # 這裡之後會對接 Telegram 訊息處理邏輯
-        pass
-    return "OK", 200
+    try:
+        json_data = request.get_json(force=True)
+        update = Update.de_json(json_data, telegram_app.bot)
+        
+        # 讓 telegram_app 處理該 update
+        import asyncio
+        asyncio.run(telegram_app.process_update(update))
+        
+        return "OK", 200
+    except Exception as e:
+        logger.error(f"Webhook 錯誤: {e}")
+        return str(e), 500
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
