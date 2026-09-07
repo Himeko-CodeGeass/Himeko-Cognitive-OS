@@ -30,14 +30,8 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 # ---------------------------------------------------------
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
-    system_instruction = (
-        "你是姬子與素夢流光雙核運算架構下的認知作業系統助理（衍天）。"
-        "請以專業、高質感且條理分明的方式回答主公的問題。"
-    )
-    # 使用兼具極高相容性與穩定度的 gemini-pro 模型
-    model = genai.GenerativeModel(
-        model_name="gemini-pro"
-    )
+    # 改用通用相容名稱，避免 v1beta API 拋出 404
+    model = genai.GenerativeModel(model_name="gemini-1.5-flash-latest")
 else:
     model = None
     logger.warning("未偵測到 GEMINI_API_KEY，將無法啟用動態 AI 回應功能。")
@@ -51,7 +45,11 @@ class CognitiveCore:
             return "【系統提示】GEMINI_API_KEY 未設定，無法呼叫 AI 運算引擎。"
 
         try:
-            prompt = f"系統指令: 你是姬子與素夢流光雙核運算架構下的認知作業系統助理（衍天）。請專業回答。\n使用者 ({author}): {user_input}"
+            prompt = (
+                f"系統指令: 你是姬子與素夢流光雙核運算架構下的認知作業系統助理（衍天）。"
+                f"請以專業、高質感且條理分明的方式回答主公的問題。\n"
+                f"使用者 ({author}): {user_input}"
+            )
             response = model.generate_content(prompt)
             return response.text
         except Exception as e:
@@ -134,15 +132,15 @@ async def on_message(message):
     if message.author == bot.user:
         return
 
-    # 只要有人發言，不論是否有 ! 字首，均全面回應
+    # 全面接收 Discord 頻道內的語句或以 ! 開頭的指令
     user_text = message.content
     if user_text.startswith("!"):
         user_text = user_text[1:].strip()
 
     if user_text:
         async with message.channel.typing():
-            # 使用 loop.run_in_executor 避免同步 API 阻斷非同步事件迴圈
-            loop = asyncio.get_event_loop()
+            # 將同步作業交由執行緒池，防範非同步迴圈卡死
+            loop = asyncio.get_running_loop()
             reply_text = await loop.run_in_executor(
                 None, CognitiveCore.generate_ai_response, user_text, str(message.author)
             )
