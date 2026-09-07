@@ -1,5 +1,6 @@
 import os
 import logging
+import time
 import requests
 from flask import Flask, request
 from google import genai
@@ -31,14 +32,26 @@ def webhook():
             chat_id = data["message"]["chat"]["id"]
             user_message = data["message"]["text"]
 
-            # 呼叫 Gemini
-            response = genai_client.models.generate_content(
-                model=GEMINI_MODEL,
-                contents=user_message,
-            )
-            reply_text = response.text
+            reply_text = None
+            max_retries = 3
+            
+            # 自動重試機制，對應 503 伺服器忙碌
+            for attempt in range(max_retries):
+                try:
+                    response = genai_client.models.generate_content(
+                        model=GEMINI_MODEL,
+                        contents=user_message,
+                    )
+                    reply_text = response.text
+                    break
+                except Exception as api_err:
+                    logger.warning(f"第 {attempt + 1} 次呼叫 Gemini 失敗: {api_err}")
+                    if attempt < max_retries - 1:
+                        time.sleep(2) # 等待 2 秒後重試
+                    else:
+                        reply_text = "伺服器目前流量較大，請稍後再試一次。"
 
-            # 透過 Telegram Bot API 直接回傳訊息
+            # 透過 Telegram Bot API 回傳訊息
             requests.post(TELEGRAM_API_URL, json={
                 "chat_id": chat_id,
                 "text": reply_text
