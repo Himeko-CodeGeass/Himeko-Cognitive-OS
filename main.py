@@ -94,12 +94,10 @@ async def on_message(message):
 def run_discord_bot():
   discord_token = os.environ.get('DISCORD_BOT_TOKEN')
   if discord_token:
-    try:
-      asyncio.run(discord_bot.start(discord_token))
+        try:
+      discord_bot.run(discord_token)
     except Exception as e:
       logger.error(f'Discord Bot 運行錯誤: {e}')
-  else:
-    logger.warning('未偵測到 DISCORD_BOT_TOKEN 環境變數')
 
 
 # 讓 Discord 執行緒在模組載入時於背景啟動（相容於 Gunicorn 與 python main.py）
