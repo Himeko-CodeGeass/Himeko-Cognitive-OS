@@ -2,5 +2,5 @@ flask
 requests
 gunicorn
 python-telegram-bot
-google-genai
+google-generativeai
 discord.py
