@@ -34,10 +34,9 @@ if GEMINI_API_KEY:
         "你是姬子與素夢流光雙核運算架構下的認知作業系統助理（衍天）。"
         "請以專業、高質感且條理分明的方式回答主公的問題。"
     )
-    # 修正模型名稱加上 models/ 前綴以相容 API
+    # 使用兼具極高相容性與穩定度的 gemini-pro 模型
     model = genai.GenerativeModel(
-        model_name="models/gemini-1.5-flash",
-        system_instruction=system_instruction
+        model_name="gemini-pro"
     )
 else:
     model = None
@@ -52,7 +51,8 @@ class CognitiveCore:
             return "【系統提示】GEMINI_API_KEY 未設定，無法呼叫 AI 運算引擎。"
 
         try:
-            response = model.generate_content(user_input)
+            prompt = f"系統指令: 你是姬子與素夢流光雙核運算架構下的認知作業系統助理（衍天）。請專業回答。\n使用者 ({author}): {user_input}"
+            response = model.generate_content(prompt)
             return response.text
         except Exception as e:
             logger.error(f"Gemini API 呼叫失敗: {e}")
@@ -134,20 +134,29 @@ async def on_message(message):
     if message.author == bot.user:
         return
 
-    if message.content.startswith("!") or not message.guild:
-        user_text = message.content.lstrip("!")
-        async with message.channel.typing():
-            reply_text = CognitiveCore.generate_ai_response(user_text, str(message.author))
-            await message.channel.send(reply_text)
+    # 只要有人發言，不論是否有 ! 字首，均全面回應
+    user_text = message.content
+    if user_text.startswith("!"):
+        user_text = user_text[1:].strip()
 
-    await bot.process_commands(message)
+    if user_text:
+        async with message.channel.typing():
+            # 使用 loop.run_in_executor 避免同步 API 阻斷非同步事件迴圈
+            loop = asyncio.get_event_loop()
+            reply_text = await loop.run_in_executor(
+                None, CognitiveCore.generate_ai_response, user_text, str(message.author)
+            )
+            await message.channel.send(reply_text)
 
 def run_discord_bot():
     if not DISCORD_BOT_TOKEN:
         logger.error("未找到 DISCORD_BOT_TOKEN！")
         return
+    
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     try:
-        asyncio.run(bot.start(DISCORD_BOT_TOKEN))
+        loop.run_until_complete(bot.start(DISCORD_BOT_TOKEN))
     except Exception as e:
         logger.error(f"Discord 啟動失敗: {e}")
 
