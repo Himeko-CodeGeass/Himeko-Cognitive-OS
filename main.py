@@ -1,5 +1,6 @@
 import os
 import logging
+import asyncio
 from flask import Flask, request
 from telegram import Update
 from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
@@ -18,7 +19,7 @@ app = Flask(__name__)
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
-# 初始化 Gemini 客戶端 (使用最新支援的模型)
+# 初始化 Gemini 客戶端
 genai_client = genai.Client(api_key=GEMINI_API_KEY)
 GEMINI_MODEL = "gemini-3.6-flash"
 
@@ -31,7 +32,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"收到來自 {chat_id} 的訊息: {user_message}")
 
     try:
-        # 呼叫 Gemini 產生回覆
         response = genai_client.models.generate_content(
             model=GEMINI_MODEL,
             contents=user_message,
@@ -41,7 +41,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.error(f"Gemini 錯誤: {e}")
         reply_text = f"Gemini 錯誤: {e}"
 
-    # 回覆訊息給 Telegram 使用者
     await context.bot.send_message(chat_id=chat_id, text=reply_text)
 
 # 註冊訊息處理器
@@ -57,10 +56,12 @@ def webhook():
         json_data = request.get_json(force=True)
         update = Update.de_json(json_data, telegram_app.bot)
         
-        # 讓 telegram_app 處理該 update
-        import asyncio
-        asyncio.run(telegram_app.process_update(update))
-        
+        async def process():
+            # 確保 Application 有被初始化
+            await telegram_app.initialize()
+            await telegram_app.process_update(update)
+
+        asyncio.run(process())
         return "OK", 200
     except Exception as e:
         logger.error(f"Webhook 錯誤: {e}")
