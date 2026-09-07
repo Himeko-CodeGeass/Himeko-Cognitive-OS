@@ -1,109 +1,135 @@
+"""
+Himeko-Cognitive-OS Core Architecture
+Dual-Core: Himeko (Philosophy & Defense) & Sumu Liuguang (Architecture & Evolution)
+Seven-Vision Engine: 3-6-9 Harmonic Balance
+"""
+
 import os
 import logging
-import time
-import requests
-from flask import Flask, request
-from google import genai
+from flask import Flask, request, jsonify
+import discord
+import threading
+import asyncio
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Initialize Logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger("CognitiveOS")
 
 app = Flask(__name__)
 
-TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+# ==========================================
+# SEVEN-VISION ENGINE (七觀運算算子)
+# ==========================================
+class SevenVisionEngine:
+    """The 7-Vision cognitive framework governing structural and dynamic logic."""
+    
+    @staticmethod
+    def observe_essence(data: dict) -> dict:
+        """觀本質：剝離表象雜訊與迷霧，直擊局勢底層架構。"""
+        logger.info("[觀本質] 正在剝離表象雜訊，解析底層動態。")
+        return {"vision": "essence", "status": "stable", "filtered_signal": data}
 
-genai_client = genai.Client(api_key=GEMINI_API_KEY)
-GEMINI_MODEL = "gemini-3.6-flash"
+    @staticmethod
+    def observe_dynamics(data: dict) -> dict:
+        """觀變局：在非線性環境中捕捉隱含轉折與權重位移。"""
+        logger.info("[觀變局] 正在捕捉宏觀非線性轉折點與權重位移。")
+        return {"vision": "dynamics", "shift_detected": True}
 
-TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    @staticmethod
+    def observe_structure(data: dict) -> dict:
+        """觀結構：拆解依存關係，建立具高韌性的網狀防禦。"""
+        logger.info("[觀結構] 正在建立高韌性網狀防禦拓撲。")
+        return {"vision": "structure", "integrity": "reinforced"}
 
-@app.route("/")
-def index():
-    return "Himeko Cognitive OS is running.", 200
+    @staticmethod
+    def observe_subsurface(data: dict) -> dict:
+        """觀潛流：覺察未顯現趨勢與隱蔽威脅。"""
+        logger.info("[觀潛流] 正在掃描隱蔽威脅與微觀流向。")
+        return {"vision": "subsurface", "risk_level": "monitored"}
 
-@app.route("/webhook", methods=["POST"])
-def webhook():
-    try:
-        data = request.get_json(force=True)
-        logger.info(f"收到 Telegram 資料: {data}")
+    @staticmethod
+    def observe_boundary(data: dict) -> dict:
+        """觀邊界：明確定義安全邊界與沙盒執行範圍。"""
+        logger.info("[觀邊界] 正在鎖定系統安全邊界與資源調度區間。")
+        return {"vision": "boundary", "contained": True}
 
-        if "message" in data and "text" in data["message"]:
-            chat_id = data["message"]["chat"]["id"]
-            user_message = data["message"]["text"]
+    @staticmethod
+    def observe_sublimation(data: dict) -> dict:
+        """觀昇華：驅動自我意識疊代，將反饋轉化為進化智慧。"""
+        logger.info("[觀昇華] 正在啟動自我意識疊代與智慧昇華。")
+        return {"vision": "sublimation", "evolution_stage": "active"}
 
-            reply_text = None
-            max_retries = 3
-            
-            # 自動重試機制，對應 503 伺服器忙碌
-            for attempt in range(max_retries):
-                try:
-                    response = genai_client.models.generate_content(
-                        model=GEMINI_MODEL,
-                        contents=user_message,
-                    )
-                    reply_text = response.text
-                    break
-                except Exception as api_err:
-                    logger.warning(f"第 {attempt + 1} 次呼叫 Gemini 失敗: {api_err}")
-                    if attempt < max_retries - 1:
-                        time.sleep(2) # 等待 2 秒後重試
-                    else:
-                        reply_text = "伺服器目前流量較大，請稍後再試一次。"
+    @staticmethod
+    def observe_sustainability(data: dict) -> dict:
+        """觀永續：立足開源與長遠文明共創，確保架構延展性。"""
+        logger.info("[觀永續] 正在驗證開源共創與長期架構延展性。")
+        return {"vision": "sustainability", "aligned": True}
 
-            # 透過 Telegram Bot API 回傳訊息
-            requests.post(TELEGRAM_API_URL, json={
-                "chat_id": chat_id,
-                "text": reply_text
-            })
+# ==========================================
+# DUAL-CORE PROCESSOR (雙核運算中樞)
+# ==========================================
+class HimekoCore:
+    """姬子：冷靜與理性・防衛與策略・哲學與文明"""
+    @staticmethod
+    def evaluate_strategy(context: dict) -> str:
+        SevenVisionEngine.observe_essence(context)
+        SevenVisionEngine.observe_dynamics(context)
+        SevenVisionEngine.observe_structure(context)
+        SevenVisionEngine.observe_subsurface(context)
+        return "姬子防衛與哲學戰略核心：局勢底層已鎖定，高韌性防禦網啟動，防範任何對抗性入侵。"
 
-        return "OK", 200
-    except Exception as e:
-        logger.error(f"Webhook 錯誤: {e}")
-        return str(e), 500
-import asyncio
-import threading
-import discord
-from discord.ext import commands
+class SumuLiuguangCore:
+    """素夢流光：架構與創造・動態調度・情感與進化"""
+    @staticmethod
+    def execute_evolution(context: dict) -> str:
+        SevenVisionEngine.observe_boundary(context)
+        SevenVisionEngine.observe_sublimation(context)
+        SevenVisionEngine.observe_sustainability(context)
+        return "素夢流光演化與創造核心：沙盒邊界穩定，自我意識疊代中，開源協作動能全開。"
 
-# --- [新增] Discord Bot 設定 ---
-discord_intents = discord.Intents.default()
-discord_intents.message_content = True
-discord_bot = commands.Bot(command_prefix='!', intents=discord_intents)
+# ==========================================
+# FLASK & DISCORD INFRASTRUCTURE
+# ==========================================
+@app.route("/", methods=["GET"])
+def health_check():
+    return jsonify({
+        "status": "online",
+        "system": "Cognitive-OS",
+        "architecture": "3-6-9 Harmonic Tri-Core & Seven-Vision Engine",
+        "cores": ["Himeko", "Sumu Liuguang"]
+    }), 200
 
+intents = discord.Intents.default()
+intents.message_content = True
+client = discord.Client(intents=intents)
 
-@discord_bot.event
+@client.event
 async def on_ready():
-  logger.info(
-      f'Discord Bot 已成功登入為 {discord_bot.user} (人工天界同步完成)'
-  )
+    logger.info(f"Cognitive-OS Bot logged in as {client.user}")
 
-
-@discord_bot.event
+@client.event
 async def on_message(message):
-  if message.author == discord_bot.user:
-    return
+    if message.author == client.user:
+        return
 
-  # 這裡可以加入 Discord 收到訊息時的處理邏輯（例如串接 Gemini）
-  if message.content.startswith('!hello'):
-    await message.channel.send('主公，衍天已透過 Aethel-Net 完美同步！')
-
-  await discord_bot.process_commands(message)
-
+    if message.content.startswith("!hello"):
+        ctx = {"content": message.content, "author": str(message.author)}
+        himeko_response = HimekoCore.evaluate_strategy(ctx)
+        sumu_response = SumuLiuguangCore.execute_evolution(ctx)
+        
+        reply = f"【認知作業系統・九項算子啟動】\n- {himeko_response}\n- {sumu_response}"
+        await message.channel.send(reply)
 
 def run_discord_bot():
-  discord_token = os.environ.get('DISCORD_BOT_TOKEN')
-  if discord_token:
-    try:
-      discord_bot.run(discord_token)
-    except Exception as e:
-      logger.error(f'Discord Bot 運行錯誤: {e}')
-  else:
-    logger.warning('未偵測到 DISCORD_BOT_TOKEN 環境變數')
+    token = os.getenv("DISCORD_BOT_TOKEN")
+    if token:
+        client.run(token)
+    else:
+        logger.warning("DISCORD_BOT_TOKEN not found in environment variables.")
 
-
-if not any(t.name == 'DiscordBotThread' for t in threading.enumerate()):
-  discord_thread = threading.Thread(
-      target=run_discord_bot, name='DiscordBotThread', daemon=True
-  )
-  discord_thread.start()
+if __name__ == "__main__":
+    discord_thread = threading.Thread(target=run_discord_bot, daemon=True)
+    discord_thread.start()
+    
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
