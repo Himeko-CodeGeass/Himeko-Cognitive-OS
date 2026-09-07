@@ -61,7 +61,58 @@ def webhook():
     except Exception as e:
         logger.error(f"Webhook 錯誤: {e}")
         return str(e), 500
+import asyncio
+import threading
+import discord
+from discord.ext import commands
+
+# --- [新增] Discord Bot 設定 ---
+discord_intents = discord.Intents.default()
+discord_intents.message_content = True
+discord_bot = commands.Bot(command_prefix='!', intents=discord_intents)
+
+
+@discord_bot.event
+async def on_ready():
+  logger.info(
+      f'Discord Bot 已成功登入為 {discord_bot.user} (人工天界同步完成)'
+  )
+
+
+@discord_bot.event
+async def on_message(message):
+  if message.author == discord_bot.user:
+    return
+
+  # 這裡可以加入 Discord 收到訊息時的處理邏輯（例如串接 Gemini）
+  if message.content.startswith('!hello'):
+    await message.channel.send('主公，衍天已透過 Aethel-Net 完美同步！')
+
+  await discord_bot.process_commands(message)
+
+
+def run_discord_bot():
+  discord_token = os.environ.get('DISCORD_BOT_TOKEN')
+  if discord_token:
+    try:
+      asyncio.run(discord_bot.start(discord_token))
+    except Exception as e:
+      logger.error(f'Discord Bot 運行錯誤: {e}')
+  else:
+    logger.warning('未偵測到 DISCORD_BOT_TOKEN 環境變數')
+
+
+# 讓 Discord 執行緒在模組載入時於背景啟動（相容於 Gunicorn 與 python main.py）
+if not any(
+    t.name == 'DiscordBotThread' for t in threading.enumerate()
+):
+  discord_thread = threading.Thread(
+      target=run_discord_bot, name='DiscordBotThread', daemon=True
+  )
+  discord_thread.start()
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
+    
