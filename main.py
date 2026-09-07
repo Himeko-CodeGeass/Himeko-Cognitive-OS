@@ -30,13 +30,13 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 # ---------------------------------------------------------
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
-    # 設定系統人設 Persona
     system_instruction = (
         "你是姬子與素夢流光雙核運算架構下的認知作業系統助理（衍天）。"
         "請以專業、高質感且條理分明的方式回答主公的問題。"
     )
+    # 修正模型名稱加上 models/ 前綴以相容 API
     model = genai.GenerativeModel(
-        model_name="gemini-1.5-flash",
+        model_name="models/gemini-1.5-flash",
         system_instruction=system_instruction
     )
 else:
@@ -95,7 +95,6 @@ def home():
 def healthz():
     return jsonify({"status": "ok"}), 200
 
-# Telegram Webhook 接收點
 @app.route("/webhook", methods=["POST"])
 @app.route("/telegram-webhook", methods=["POST"])
 def telegram_webhook():
@@ -108,7 +107,6 @@ def telegram_webhook():
         text = data["message"]["text"]
         author = data["message"]["from"].get("username", "TelegramUser")
 
-        # 呼叫 Gemini AI 產生真實動態回覆
         reply_text = CognitiveCore.generate_ai_response(text, author)
 
         tg_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
@@ -136,7 +134,6 @@ async def on_message(message):
     if message.author == bot.user:
         return
 
-    # 處理指令或聊天訊息
     if message.content.startswith("!") or not message.guild:
         user_text = message.content.lstrip("!")
         async with message.channel.typing():
@@ -149,10 +146,8 @@ def run_discord_bot():
     if not DISCORD_BOT_TOKEN:
         logger.error("未找到 DISCORD_BOT_TOKEN！")
         return
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
     try:
-        loop.run_until_complete(bot.start(DISCORD_BOT_TOKEN))
+        asyncio.run(bot.start(DISCORD_BOT_TOKEN))
     except Exception as e:
         logger.error(f"Discord 啟動失敗: {e}")
 
