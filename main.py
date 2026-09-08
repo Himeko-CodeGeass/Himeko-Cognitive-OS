@@ -31,7 +31,8 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
     # 修正模型名稱：移除 -latest 後綴，改用標準穩定名稱以避免 v1beta 404 錯誤
-    model = genai.GenerativeModel(model_name="gemini-1.5-flash")
+    model = genai.GenerativeModel("gemini-1.5-flash-latest")
+
 else:
     model = None
     logger.warning("未偵測到 GEMINI_API_KEY，將無法啟用動態 AI 回應功能。")
