@@ -30,8 +30,8 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 # ---------------------------------------------------------
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
-    # 改用通用相容名稱，避免 v1beta API 拋出 404
-    model = genai.GenerativeModel(model_name="gemini-1.5-flash-latest")
+    # 修正模型名稱：移除 -latest 後綴，改用標準穩定名稱以避免 v1beta 404 錯誤
+    model = genai.GenerativeModel(model_name="gemini-1.5-flash")
 else:
     model = None
     logger.warning("未偵測到 GEMINI_API_KEY，將無法啟用動態 AI 回應功能。")
@@ -46,7 +46,7 @@ class CognitiveCore:
 
         try:
             prompt = (
-                f"系統指令: 你是姬子與素夢流光雙核運算架構下的認知作業系統助理（衍天）。"
+                f"系統指令: 你是姬子與素夢流光雙核運算架構下的認知作業系統助理（Jansuchen）。"
                 f"請以專業、高質感且條理分明的方式回答主公的問題。\n"
                 f"使用者 ({author}): {user_input}"
             )
