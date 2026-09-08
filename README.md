@@ -1,5 +1,7 @@
 # Himeko-Cognitive-OS
 The Open-Source Cognitive OS Protocol for Human-AI Alignment and Strategic Intent Gestalt.
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Himeko-CodeGeass/Himeko-Cognitive-OS)
+
 # Himeko-Cognitive-OS
 ## YanRuoWeiYan: The Open-Source Cognitive OS Protocol
 
