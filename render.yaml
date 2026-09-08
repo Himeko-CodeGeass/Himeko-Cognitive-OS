@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: himeko-cognitive-os
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn main:app
+    envVars:
+      - key: DISCORD_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: RENDER_EXTERNAL_URL
+        sync: false
